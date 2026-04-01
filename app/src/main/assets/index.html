@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Rockors SKU</title>
+<style>
+:root {
+  --bg:#0d0d14; --surf:#16161f; --surf2:#1e1e2a; --border:#2a2a3d;
+  --accent:#00e5ff; --accent2:#7c3aed; --text:#e8e8f2; --muted:#6b6b8a;
+  --ok:#00ff88; --warn:#ffaa00; --err:#ff4466;
+  --sb: env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,'Segoe UI',sans-serif;font-size:15px}
+
+/* NAV */
+#nav{display:flex;background:var(--surf);border-top:1px solid var(--border);position:fixed;bottom:0;left:0;right:0;padding-bottom:var(--sb);z-index:100}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;cursor:pointer;color:var(--muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;border:none;background:none;transition:color .15s}
+.nb svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2}
+.nb.on{color:var(--accent)}
+
+/* SCREENS */
+#app{height:100vh;padding-bottom:calc(58px + var(--sb));overflow:hidden}
+.scr{display:none;height:100%;flex-direction:column;overflow:hidden}
+.scr.on{display:flex}
+
+/* HEADER */
+.hdr{padding:14px 16px 10px;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0}
+.hdr h1{font-size:18px;font-weight:800;letter-spacing:-.3px}
+.hdr p{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* SCANNER */
+#camWrap{position:relative;flex:1;background:#000;overflow:hidden}
+#video{width:100%;height:100%;object-fit:cover;display:block}
+#scanLine{position:absolute;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);box-shadow:0 0 8px var(--accent);animation:scanAnim 2s linear infinite}
+@keyframes scanAnim{0%,100%{top:15%}50%{top:85%}}
+#frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:260px;height:160px}
+.cor{position:absolute;width:22px;height:22px;border-color:var(--accent);border-style:solid}
+.cor.tl{top:0;left:0;border-width:3px 0 0 3px}
+.cor.tr{top:0;right:0;border-width:3px 3px 0 0}
+.cor.bl{bottom:0;left:0;border-width:0 0 3px 3px}
+.cor.br{bottom:0;right:0;border-width:0 3px 3px 0}
+#camStatus{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.85));padding:20px 16px 12px;text-align:center}
+#camMsg{font-size:14px}
+#camEan{font-size:11px;color:var(--muted);margin-top:4px;font-family:monospace}
+#torchBtn{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.2);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;color:#fff}
+
+/* MANUAL BAR */
+#manualBar{display:flex;gap:8px;padding:10px 12px;background:var(--surf);border-top:1px solid var(--border);flex-shrink:0}
+#manEan{flex:1;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:10px 12px;outline:none;font-family:monospace}
+#manEan:focus{border-color:var(--accent)}
+#manBtn{background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap}
+
+/* PANEL */
+#panel{position:absolute;bottom:0;left:0;right:0;background:var(--surf);border-top:1px solid var(--border);border-radius:20px 20px 0 0;padding:18px 16px 20px;max-height:78%;overflow-y:auto;display:none;animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+#panelClose{position:absolute;top:14px;right:16px;background:var(--surf2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center}
+.plbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px}
+.row{display:flex;gap:10px;align-items:flex-start;margin-bottom:9px}
+.rlbl{font-size:11px;color:var(--muted);width:76px;flex-shrink:0;padding-top:10px;text-transform:uppercase;letter-spacing:.4px}
+.rval{flex:1}
+.rval input,.rval select{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:9px 10px;outline:none;font-family:inherit;appearance:none}
+.rval input:focus,.rval select:focus{border-color:var(--accent)}
+.skubadge{background:rgba(0,229,255,.08);border:1px solid var(--accent);border-radius:10px;padding:12px 14px;font-family:monospace;font-size:17px;font-weight:800;color:var(--accent);letter-spacing:1px;margin:12px 0;word-break:break-all}
+.btns{display:flex;gap:8px;margin-top:14px}
+.btn{flex:1;padding:13px;border-radius:10px;border:none;font-size:14px;font-weight:800;cursor:pointer;transition:all .15s}
+.btn:active{opacity:.8;transform:scale(.98)}
+.btn-p{background:var(--accent);color:#000}
+.btn-s{background:var(--surf2);color:var(--text);border:1px solid var(--border)}
+.btn-d{background:rgba(255,68,102,.12);color:var(--err);border:1px solid var(--err)}
+.warn-box{background:rgba(255,170,0,.1);border:1px solid var(--warn);border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px;color:var(--warn)}
+
+/* INVENTORY */
+#invList{flex:1;overflow-y:auto;padding:12px}
+.inv-search{display:flex;gap:8px;padding:10px 12px;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0}
+#searchQ{flex:1;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:9px 12px;outline:none}
+#searchQ:focus{border-color:var(--accent)}
+.icard{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
+.icard:active{border-color:var(--accent)}
+.isku{font-family:monospace;font-size:14px;font-weight:800;color:var(--accent)}
+.iname{font-size:13px;margin-top:4px}
+.imeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.tag{font-size:10px;padding:3px 8px;border-radius:20px;background:var(--surf2);color:var(--muted);border:1px solid var(--border)}
+.tag.cat{color:#ff9944;border-color:rgba(255,153,68,.3);background:rgba(255,153,68,.07)}
+.tag.brd{color:#44aaff;border-color:rgba(68,170,255,.3);background:rgba(68,170,255,.07)}
+.iean{font-size:10px;color:var(--muted);margin-top:6px;font-family:monospace}
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty .ico{font-size:48px;margin-bottom:12px}
+
+/* EXPORT */
+.xscroll{flex:1;overflow-y:auto;padding:16px}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.sbox{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.sbox .n{font-size:30px;font-weight:900;color:var(--accent)}
+.sbox .l{font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+.xcard{background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px}
+.xcard h3{font-size:15px;margin-bottom:6px}
+.xcard p{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+.xbtn{display:block;width:100%;padding:13px;border-radius:10px;border:none;font-size:14px;font-weight:800;cursor:pointer;transition:all .15s}
+.xbtn:active{opacity:.8}
+.xbtn-c{background:var(--accent);color:#000}
+.xbtn-j{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.xbtn-d{background:rgba(255,68,102,.12);color:var(--err);border:1px solid var(--err)}
+
+/* TOAST */
+#toast{position:fixed;bottom:calc(70px + var(--sb));left:50%;transform:translateX(-50%) translateY(16px);background:var(--ok);color:#000;font-size:13px;font-weight:800;padding:10px 22px;border-radius:20px;opacity:0;transition:all .2s;white-space:nowrap;z-index:999;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{background:var(--err);color:#fff}
+#toast.wrn{background:var(--warn);color:#000}
+
+/* DETAIL MODAL */
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;padding:20px;align-items:flex-end}
+#modal.on{display:flex}
+#mbox{background:var(--surf);border-radius:20px;width:100%;padding:20px;max-height:85vh;overflow-y:auto;animation:slideUp .25s ease}
+.spin{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── SCAN SCREEN ── -->
+  <div class="scr on" id="scrScan">
+    <div id="camWrap">
+      <video id="video" autoplay playsinline muted></video>
+      <div id="frame">
+        <div class="cor tl"></div><div class="cor tr"></div>
+        <div class="cor bl"></div><div class="cor br"></div>
+      </div>
+      <div id="scanLine"></div>
+      <button id="torchBtn" onclick="toggleTorch()">🔦</button>
+      <div id="camStatus">
+        <div id="camMsg">Starting camera…</div>
+        <div id="camEan"></div>
+      </div>
+      <!-- Lookup panel slides up here -->
+      <div id="panel">
+        <div id="panelClose" onclick="closePanel()">✕</div>
+        <div id="panelBody"></div>
+      </div>
+    </div>
+    <div id="manualBar">
+      <input id="manEan" type="tel" inputmode="numeric" placeholder="Enter EAN manually…">
+      <button id="manBtn" onclick="manualLookup()">Look Up</button>
+    </div>
+  </div>
+
+  <!-- ── INVENTORY SCREEN ── -->
+  <div class="scr" id="scrInv">
+    <div class="hdr"><h1>Inventory</h1><p id="invSub">Loading…</p></div>
+    <div class="inv-search">
+      <input id="searchQ" type="text" placeholder="Search SKU, name, brand, EAN…" oninput="renderInv()">
+    </div>
+    <div id="invList"></div>
+  </div>
+
+  <!-- ── EXPORT SCREEN ── -->
+  <div class="scr" id="scrExp">
+    <div class="hdr"><h1>Export</h1><p>Share or download your data</p></div>
+    <div class="xscroll">
+      <div class="sgrid">
+        <div class="sbox"><div class="n" id="stTotal">0</div><div class="l">Products</div></div>
+        <div class="sbox"><div class="n" id="stCats">0</div><div class="l">Categories</div></div>
+        <div class="sbox"><div class="n" id="stBrands">0</div><div class="l">Brands</div></div>
+        <div class="sbox"><div class="n" id="stToday">0</div><div class="l">Today</div></div>
+      </div>
+      <div class="xcard">
+        <h3>📋 CSV Export</h3>
+        <p>Opens your share sheet — send to email, Google Drive, WhatsApp, or any app. Import directly into Excel or Google Sheets.</p>
+        <button class="xbtn xbtn-c" onclick="doExport('csv')">Share as CSV</button>
+      </div>
+      <div class="xcard">
+        <h3>{ } JSON Export</h3>
+        <p>Full structured data with all fields. Useful for backups or importing into other systems.</p>
+        <button class="xbtn xbtn-j" onclick="doExport('json')">Share as JSON</button>
+      </div>
+      <div class="xcard">
+        <h3>🗑 Clear All Data</h3>
+        <p>Permanently removes all saved products from this device. Cannot be undone.</p>
+        <button class="xbtn xbtn-d" onclick="confirmClear()">Clear All Data</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- NAV -->
+<div id="nav">
+  <button class="nb on" id="nbScan" onclick="goTo('Scan')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v6M3 15h18M15 15v6"/></svg>Scan
+  </button>
+  <button class="nb" id="nbInv" onclick="goTo('Inv')">
+    <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>Inventory
+  </button>
+  <button class="nb" id="nbExp" onclick="goTo('Exp')">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Export
+  </button>
+</div>
+
+<!-- DETAIL MODAL -->
+<div id="modal" onclick="closeModal(event)">
+  <div id="mbox"></div>
+</div>
+
+<div id="toast"></div>
+
+<script src="zxing.min.js"></script>
+<script>
+'use strict';
+
+// ─── DATABASE ────────────────────────────────────────────────────────────────
+const DB = 'rockors_v3';
+const db = {
+  load() { try { return JSON.parse(localStorage.getItem(DB) || '[]'); } catch(e){ return []; } },
+  save(d) { localStorage.setItem(DB, JSON.stringify(d)); },
+  upsert(item) { const d = this.load(); const i = d.findIndex(x => x.ean===item.ean); if(i>=0) d[i]=item; else d.unshift(item); this.save(d); },
+  delete(ean) { this.save(this.load().filter(x=>x.ean!==ean)); },
+};
+
+// ─── SKU ENGINE ──────────────────────────────────────────────────────────────
+const CATS = {
+  'processor':'CPU','cpu':'CPU','ryzen':'CPU','core i':'CPU','xeon':'CPU',
+  'graphics card':'GPU','gpu':'GPU','geforce':'GPU','radeon':'GPU','rtx':'GPU','rx 6':'GPU','rx 7':'GPU',
+  'memory':'RAM','ram':'RAM','ddr4':'RAM','ddr5':'RAM','dimm':'RAM',
+  'ssd':'SSD','nvme':'SSD','solid state':'SSD','m.2':'SSD',
+  'hard drive':'HDD','hdd':'HDD','hard disk':'HDD','seagate barracuda':'HDD',
+  'motherboard':'MOB','mainboard':'MOB','z790':'MOB','b650':'MOB','x670':'MOB',
+  'power supply':'PSU','psu':'PSU','watt':'PSU',
+  'case':'CAS','chassis':'CAS','tower':'CAS','mid tower':'CAS',
+  'cooler':'CLR','heatsink':'CLR','aio':'CLR','liquid cool':'CLR','air cool':'CLR',
+  'monitor':'MON','display':'MON','144hz':'MON','165hz':'MON','240hz':'MON','4k monitor':'MON',
+  'keyboard':'KBD','mechanical keyboard':'KBD','tkl':'KBD',
+  'mouse':'MOU','gaming mouse':'MOU','wireless mouse':'MOU',
+  'headset':'HDG','headphone':'HDG','earphone':'HDG','earbuds':'HDG',
+  'speaker':'SPK','soundbar':'SPK',
+  'webcam':'CAM','web camera':'CAM',
+  'hub':'HUB','usb hub':'HUB','dock':'HUB','docking station':'HUB',
+  'router':'NET','wifi':'NET','ethernet':'NET','network switch':'NET','access point':'NET',
+  'mousepad':'PAD','desk mat':'PAD','gaming mat':'PAD',
+  'controller':'CTR','gamepad':'CTR','joystick':'CTR',
+};
+const BRANDS = {
+  'nvidia':'NVD','amd':'AMD','intel':'INT',
+  'msi':'MSI','asus':'ASU','asus rog':'ASU','gigabyte':'GBT','asrock':'ASR','evga':'EVG',
+  'sapphire':'SPA','xfx':'XFX','zotac':'ZOT','pny':'PNY','powercolor':'PWC',
+  'corsair':'CRS','g.skill':'GKL','gskill':'GKL','kingston':'KNG','fury':'KNG',
+  'samsung':'SMG','western digital':'WDG','wd black':'WDG','seagate':'SEG','crucial':'CRU','sk hynix':'SNK','hynix':'SNK','teamgroup':'TMG',
+  'logitech':'LGT','logitech g':'LGT','razer':'RZR','steelseries':'SNG','hyperx':'HYP',
+  'roccat':'ROC','glorious':'GLD','zowie':'ZWO','endgame gear':'EGG','pulsar':'PLS',
+  'lg':'LG','benq':'BEQ','aoc':'AOC','acer':'ACR','dell':'DEL','viewsonic':'VWS','alienware':'ALW','asus rog swift':'ASU',
+  'nzxt':'NZT','fractal design':'FRC','lian li':'LNL','be quiet':'BEQ','arctic':'ARC','noctua':'NHD','thermaltake':'THM','cooler master':'CMP','deepcool':'DPC',
+  'sennheiser':'SEN','audio-technica':'ATH','creative':'CRV','jabra':'JBR',
+};
+
+function guessCAT(name, cat) {
+  const t = (name+' '+cat).toLowerCase();
+  for(const [k,v] of Object.entries(CATS)) if(t.includes(k)) return v;
+  return 'OTH';
+}
+function guessBRD(brand, name) {
+  const t = (brand+' '+name).toLowerCase();
+  for(const [k,v] of Object.entries(BRANDS)) if(t.includes(k)) return v;
+  const b = brand.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
+  return b || 'UNK';
+}
+function guessMDL(name, brand) {
+  let s = name.replace(new RegExp(brand,'gi'),'').trim();
+  const tokens = (s.match(/[A-Z0-9][\w-]{1,12}/gi)||[]).filter(t=>/\d/.test(t));
+  return (tokens.slice(0,2).join('').toUpperCase().slice(0,10)) || 'MODEL';
+}
+function guessVAR(name) {
+  const t = name.toUpperCase(), v = [];
+  const cap = t.match(/\b(\d+TB|\d+GB|\d+MB)\b/g);
+  if(cap) v.push(...cap.slice(0,1));
+  if(/\bWHITE?\b|\bWH\b/.test(t)) v.push('WH');
+  else if(/\bBLACK\b|\bBLK\b/.test(t)) v.push('BK');
+  if(/\bRGB\b|\bARGB\b/.test(t)) v.push('RGB');
+  if(/\bWIFI\b|\bWIRELESS\b/.test(t)) v.push('WL');
+  if(/\bBLUETOOTH\b/.test(t)) v.push('BT');
+  if(/\bMINI.?ITX\b|\bITX\b/.test(t)) v.push('ITX');
+  else if(/\bMICRO.?ATX\b|\bMATX\b/.test(t)) v.push('mATX');
+  return v;
+}
+function buildSKU(item) {
+  const c = item.cat_code || guessCAT(item.name, item.category);
+  const b = item.brd_code || guessBRD(item.brand, item.name);
+  const m = item.mdl_code || guessMDL(item.name, item.brand);
+  const v = item.variants || guessVAR(item.name);
+  return [c,b,m,...v].filter(Boolean).join('-');
+}
+
+// ─── EAN LOOKUP ──────────────────────────────────────────────────────────────
+async function lookupEAN(ean) {
+  // 1. Open Food Facts
+  try {
+    const r = await fetch(`https://world.openfoodfacts.org/api/v0/product/${ean}.json`,{signal:AbortSignal.timeout(5000)});
+    const d = await r.json();
+    if(d.status===1 && d.product) {
+      const p = d.product;
+      const name = p.product_name_en || p.product_name || '';
+      if(name) return {ean,ok:true,name,brand:p.brands||'',category:p.categories_tags?.[0]?.replace('en:','')||'',image:p.image_front_url||'',src:'OpenFoodFacts'};
+    }
+  } catch(e){}
+
+  // 2. UPC Item DB (free tier)
+  try {
+    const r = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${ean}`,{signal:AbortSignal.timeout(5000)});
+    const d = await r.json();
+    if(d.code==='OK' && d.items?.length) {
+      const p = d.items[0];
+      return {ean,ok:true,name:p.title||'',brand:p.brand||'',category:p.category||'',image:p.images?.[0]||'',src:'UPCitemDB'};
+    }
+  } catch(e){}
+
+  // 3. Open Beauty Facts
+  try {
+    const r = await fetch(`https://world.openbeautyfacts.org/api/v0/product/${ean}.json`,{signal:AbortSignal.timeout(5000)});
+    const d = await r.json();
+    if(d.status===1 && d.product?.product_name) {
+      const p = d.product;
+      return {ean,ok:true,name:p.product_name,brand:p.brands||'',category:p.categories||'',image:p.image_front_url||'',src:'OpenBeautyFacts'};
+    }
+  } catch(e){}
+
+  return {ean,ok:false,name:'',brand:'',category:'',image:'',src:''};
+}
+
+// ─── SCANNER ─────────────────────────────────────────────────────────────────
+let reader=null, lastEan='', curTrack=null, scanning=false;
+
+async function startScanner() {
+  try {
+    setMsg('Starting camera…');
+    const {BrowserMultiFormatReader, BarcodeFormat} = ZXing;
+    const hints = new Map();
+    hints.set(2,[BarcodeFormat.EAN_13,BarcodeFormat.EAN_8,BarcodeFormat.UPC_A,BarcodeFormat.UPC_E,BarcodeFormat.CODE_128,BarcodeFormat.CODE_39]);
+    reader = new BrowserMultiFormatReader(hints);
+    const devs = await reader.listVideoInputDevices();
+    if(!devs.length){setMsg('No camera available');return;}
+    const cam = devs.find(d=>/back|rear|env/i.test(d.label)) || devs[devs.length-1];
+    await reader.decodeFromVideoDevice(cam.deviceId,'video',async(res,err)=>{
+      if(res){
+        const ean=res.getText();
+        if(ean===lastEan) return;
+        lastEan=ean;
+        document.getElementById('camEan').textContent='EAN: '+ean;
+        setMsg('Found! Looking up product…');
+        await doLookup(ean);
+      }
+    });
+    const stream = document.getElementById('video').srcObject;
+    if(stream) curTrack = stream.getVideoTracks()[0];
+    setMsg('Point camera at barcode');
+  } catch(e){
+    setMsg('Camera error — use manual entry below');
+    console.error(e);
+  }
+}
+
+function setMsg(m){document.getElementById('camMsg').textContent=m;}
+
+function toggleTorch(){
+  if(!curTrack) return;
+  const t=!(curTrack.getCapabilities?.()?.torch);
+  curTrack.applyConstraints({advanced:[{torch:t}]}).catch(()=>toast('Torch not supported','wrn'));
+}
+
+// ─── LOOKUP & PANEL ──────────────────────────────────────────────────────────
+let cur = null;
+
+async function doLookup(ean) {
+  openPanel(`<div style="text-align:center;padding:30px 0"><div class="spin"></div><div style="margin-top:12px;font-size:13px;color:var(--muted)">Looking up EAN ${ean}…</div></div>`);
+  const prod = await lookupEAN(ean);
+  cur = makeItem(prod);
+  renderPanel(cur);
+  setMsg(prod.ok ? '✓ Product found' : '⚠ Not found — enter details manually');
+}
+
+function makeItem(p) {
+  const cat_code = guessCAT(p.name, p.category);
+  const brd_code = guessBRD(p.brand, p.name);
+  const mdl_code = guessMDL(p.name, p.brand);
+  const variants = guessVAR(p.name);
+  const item = {ean:p.ean,name:p.name,brand:p.brand,category:p.category,image:p.image,ok:p.ok,src:p.src,cat_code,brd_code,mdl_code,variants,saved_at:new Date().toISOString()};
+  item.sku = buildSKU(item);
+  return item;
+}
+
+function renderPanel(item) {
+  const catOpts = [...new Set(Object.values(CATS))].sort().map(c=>`<option value="${c}"${c===item.cat_code?' selected':''}>${c}</option>`).join('');
+  openPanel(`
+    ${!item.ok?`<div class="warn-box">⚠ Product not found online. Please fill in the details manually.</div>`:`<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Source: ${item.src}</div>`}
+    ${item.image?`<img src="${item.image}" style="width:100%;max-height:110px;object-fit:contain;border-radius:8px;margin-bottom:12px;background:#111">` :''}
+    <div class="row"><div class="rlbl">EAN</div><div class="rval"><code style="color:var(--accent);font-family:monospace">${h(item.ean)}</code></div></div>
+    <div class="row"><div class="rlbl">Name</div><div class="rval"><input id="fi_name" value="${h(item.name)}" placeholder="Product name…" oninput="liveUpdateSku()"></div></div>
+    <div class="row"><div class="rlbl">Brand</div><div class="rval"><input id="fi_brand" value="${h(item.brand)}" placeholder="Brand name…" oninput="liveUpdateSku()"></div></div>
+    <div class="row"><div class="rlbl">Category</div><div class="rval"><select id="fi_cat" onchange="liveUpdateSku()"><option value="">Auto-detect</option>${catOpts}</select></div></div>
+    <div class="row"><div class="rlbl">Model #</div><div class="rval"><input id="fi_mdl" value="${h(item.mdl_code)}" placeholder="e.g. 4070TIS" oninput="liveUpdateSku()"></div></div>
+    <div class="plbl" style="margin-top:14px">Generated SKU</div>
+    <div class="skubadge" id="skuPrev">${h(item.sku)}</div>
+    <div class="btns">
+      <button class="btn btn-p" onclick="saveItem()">Save to Inventory</button>
+      <button class="btn btn-s" onclick="closePanel()">Cancel</button>
+    </div>
+  `);
+}
+
+function liveUpdateSku() {
+  if(!cur) return;
+  cur.name   = document.getElementById('fi_name')?.value  ?? cur.name;
+  cur.brand  = document.getElementById('fi_brand')?.value ?? cur.brand;
+  const cs   = document.getElementById('fi_cat')?.value;
+  cur.cat_code = cs || guessCAT(cur.name, cur.category);
+  cur.mdl_code = document.getElementById('fi_mdl')?.value || guessMDL(cur.name, cur.brand);
+  cur.brd_code = guessBRD(cur.brand, cur.name);
+  cur.variants = guessVAR(cur.name);
+  cur.sku = buildSKU(cur);
+  const el = document.getElementById('skuPrev');
+  if(el) el.textContent = cur.sku;
+}
+
+function saveItem() {
+  if(!cur) return;
+  liveUpdateSku();
+  db.upsert(cur);
+  closePanel();
+  lastEan='';
+  setMsg('✓ Saved! Point at next barcode');
+  document.getElementById('camEan').textContent='';
+  toast('Saved: '+cur.sku);
+}
+
+function openPanel(html) {
+  document.getElementById('panelBody').innerHTML = html;
+  document.getElementById('panel').style.display = 'block';
+}
+function closePanel() {
+  document.getElementById('panel').style.display='none';
+  lastEan='';
+  setMsg('Point camera at barcode');
+  document.getElementById('camEan').textContent='';
+}
+
+async function manualLookup() {
+  const ean = document.getElementById('manEan').value.trim();
+  if(!ean){toast('Enter an EAN first','err');return;}
+  document.getElementById('manEan').value='';
+  await doLookup(ean);
+}
+
+// ─── INVENTORY ───────────────────────────────────────────────────────────────
+function renderInv() {
+  const all = db.load();
+  const q = document.getElementById('searchQ').value.toLowerCase();
+  const items = q ? all.filter(i=>(i.sku+i.name+i.brand+i.ean).toLowerCase().includes(q)) : all;
+  document.getElementById('invSub').textContent = `${items.length} of ${all.length} items`;
+  const el = document.getElementById('invList');
+  if(!items.length){
+    el.innerHTML=`<div class="empty"><div class="ico">📦</div><p>${all.length?'No results for that search':'No items yet. Start scanning!'}</p></div>`;return;
+  }
+  el.innerHTML = items.map(i=>`
+    <div class="icard" onclick="showDetail('${h(i.ean)}')">
+      <div class="isku">${h(i.sku||'—')}</div>
+      <div class="iname">${h(i.name||'Unknown product')}</div>
+      <div class="imeta">
+        ${i.cat_code?`<span class="tag cat">${i.cat_code}</span>`:''}
+        ${i.brd_code?`<span class="tag brd">${i.brd_code}</span>`:''}
+        ${i.brand?`<span class="tag">${h(i.brand)}</span>`:''}
+      </div>
+      <div class="iean">EAN ${h(i.ean)}</div>
+    </div>`).join('');
+}
+
+function showDetail(ean) {
+  const item = db.load().find(i=>i.ean===ean);
+  if(!item) return;
+  document.getElementById('mbox').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-weight:800">Product Detail</div>
+      <div style="color:var(--muted);cursor:pointer;font-size:22px" onclick="closeModal()">✕</div>
+    </div>
+    ${item.image?`<img src="${item.image}" style="width:100%;max-height:130px;object-fit:contain;border-radius:8px;margin-bottom:14px;background:#111">`:''}
+    <div class="skubadge">${h(item.sku)}</div>
+    <div class="row" style="margin-top:12px"><div class="rlbl">Name</div><div class="rval">${h(item.name)}</div></div>
+    <div class="row"><div class="rlbl">Brand</div><div class="rval">${h(item.brand)}</div></div>
+    <div class="row"><div class="rlbl">Category</div><div class="rval">${h(item.cat_code)} — ${h(item.category)}</div></div>
+    <div class="row"><div class="rlbl">Model</div><div class="rval">${h(item.mdl_code)}</div></div>
+    <div class="row"><div class="rlbl">Variants</div><div class="rval">${(item.variants||[]).join(', ')||'—'}</div></div>
+    <div class="row"><div class="rlbl">EAN</div><div class="rval"><code style="font-family:monospace">${h(item.ean)}</code></div></div>
+    <div class="row"><div class="rlbl">Saved</div><div class="rval">${new Date(item.saved_at).toLocaleString()}</div></div>
+    <div class="btns" style="margin-top:16px">
+      <button class="btn btn-d" onclick="delItem('${h(ean)}')">Delete</button>
+      <button class="btn btn-s" onclick="closeModal()">Close</button>
+    </div>`;
+  document.getElementById('modal').classList.add('on');
+}
+function closeModal(e){if(!e||e.target===document.getElementById('modal')) document.getElementById('modal').classList.remove('on');}
+function delItem(ean){db.delete(ean);closeModal();renderInv();updateStats();toast('Deleted');}
+
+// ─── EXPORT ──────────────────────────────────────────────────────────────────
+function updateStats(){
+  const all=db.load();
+  const today=new Date().toDateString();
+  document.getElementById('stTotal').textContent=all.length;
+  document.getElementById('stCats').textContent=new Set(all.map(i=>i.cat_code)).size;
+  document.getElementById('stBrands').textContent=new Set(all.map(i=>i.brd_code)).size;
+  document.getElementById('stToday').textContent=all.filter(i=>new Date(i.saved_at).toDateString()===today).length;
+}
+
+function doExport(fmt){
+  const all=db.load();
+  if(!all.length){toast('No data to export','err');return;}
+  let content,filename,mime;
+  if(fmt==='csv'){
+    const cols=['SKU','EAN','Name','Brand','Brand Code','Category','Category Code','Model Code','Variants','Saved At'];
+    const rows=all.map(i=>[i.sku,i.ean,i.name,i.brand,i.brd_code,i.category,i.cat_code,i.mdl_code,(i.variants||[]).join('+'),new Date(i.saved_at).toLocaleString()]
+      .map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(','));
+    content=[cols.join(','),...rows].join('\n');
+    filename='rockors_skus.csv'; mime='text/csv';
+  } else {
+    content=JSON.stringify({exported_at:new Date().toISOString(),count:all.length,items:all},null,2);
+    filename='rockors_skus.json'; mime='application/json';
+  }
+  // Try native share bridge first
+  if(window.RockorsApp){
+    try{window.RockorsApp.shareFile(content,filename,mime);return;}catch(e){}
+  }
+  // Fallback: download via blob
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type:mime}));
+  a.download=filename; a.click();
+  toast('Download started');
+}
+
+function confirmClear(){
+  if(confirm('Delete ALL inventory data? This cannot be undone.')){
+    localStorage.removeItem(DB);
+    renderInv(); updateStats(); toast('All data cleared');
+  }
+}
+
+// ─── NAV ─────────────────────────────────────────────────────────────────────
+function goTo(name){
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('scr'+name).classList.add('on');
+  document.getElementById('nb'+name).classList.add('on');
+  if(name==='Inv'){renderInv();}
+  if(name==='Exp'){updateStats();}
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function h(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+let _tt;
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show'+(type?' '+type:'');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.className='',2600);
+}
+
+function onPermissionResult(){startScanner();}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load',()=>{startScanner();updateStats();});
+</script>
+</body>
+</html>
